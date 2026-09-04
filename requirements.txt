@@ -1,0 +1,10 @@
+streamlit
+pandas
+numpy
+scikit-learn
+qiskit
+qiskit-machine-learning
+qiskit-algorithms
+matplotlib
+seaborn
+shap
