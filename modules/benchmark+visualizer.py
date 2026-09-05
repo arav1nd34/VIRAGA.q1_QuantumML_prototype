@@ -16,8 +16,8 @@ try:
 except ImportError:
     SHAP_AVAILABLE = False
 
-CLASSICAL_FILE = "classical_results.csv"
-QUANTUM_FILE = "quantum_results.csv"
+CLASSICAL_FILE = "predictions_with_pca.csv"
+QUANTUM_FILE = "predictions_quantum_4q_fixed.csv"
 OUTPUT_FOLDER = "benchmark_results"
 
 METRICS_FILE = os.path.join(OUTPUT_FOLDER, "benchmark_metrics.csv")
@@ -25,13 +25,24 @@ SUMMARY_FILE = os.path.join(OUTPUT_FOLDER, "benchmark_summary.txt")
 METRIC_PLOT_FILE = os.path.join(OUTPUT_FOLDER, "metric_comparison.png")
 ROC_PLOT_FILE = os.path.join(OUTPUT_FOLDER, "roc_curve.png")
 
+# Actual column names produced by classical_engine.py and qml_4qubit.py.
+# benchmark.py works internally with y_true/y_pred/y_score, so we rename
+# on load rather than touching the upstream scripts.
+COLUMN_RENAME_MAP = {
+    "true_label": "y_true",
+    "predicted_label": "y_pred",
+    "predicted_probability_malignant": "y_score",
+}
+
 
 def load_results(file_path):
     if not os.path.exists(file_path):
         print("ERROR: File not found:", file_path)
         return None
     try:
-        return pd.read_csv(file_path)
+        data = pd.read_csv(file_path)
+        data = data.rename(columns=COLUMN_RENAME_MAP)
+        return data
     except Exception as error:
         print("ERROR: Could not read CSV:", error)
         return None
@@ -47,7 +58,6 @@ def check_required_columns(data, file_name):
 
 
 def prepare_prediction_data(model_data):
-    # Standardize data types safely
     y_true = np.asarray(model_data["y_true"], dtype=int)
     y_pred = np.asarray(model_data["y_pred"], dtype=int)
     y_score = np.asarray(model_data["y_score"], dtype=float)
@@ -55,7 +65,6 @@ def prepare_prediction_data(model_data):
 
 
 def calculate_confusion_values(y_true, y_pred):
-    # Ensure matrix is strictly 2x2 even if class predictions are missing
     matrix = confusion_matrix(y_true, y_pred, labels=[0, 1])
     tn, fp, fn, tp = matrix.ravel()
     return tn, fp, fn, tp
