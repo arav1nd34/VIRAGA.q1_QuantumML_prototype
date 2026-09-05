@@ -134,49 +134,35 @@ def calculate_and_save_shap(
     except Exception as e:
         print(f"ERROR: Failed to compute SHAP for {model_name}. Details: {e}")
 
-
-# =====================================================================
-# EXAMPLE USAGE PIPELINE
-# =====================================================================
 if __name__ == "__main__":
-    from sklearn.datasets import make_classification
-    from sklearn.model_selection import train_test_split
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.svm import SVC
+    from qml_4qubit import load_and_split_data, preprocess_for_quantum, predict_probability
 
-    # 1. Create a dummy synthetic dataset
-    X_data, y_data = make_classification(
-        n_samples=200, 
-        n_features=5, 
-        n_informative=3, 
-        random_state=42
-    )
-    feature_labels = ["Glucose", "BMI", "Age", "BloodPressure", "Insulin"]
-    
-    X_tr, X_te, y_tr, y_te = train_test_split(X_data, y_data, test_size=0.3, random_state=42)
+    feature_names = ["PC1", "PC2", "PC3", "PC4"]
 
-    # 2. Example A: Tree-based Classical Model (e.g., Random Forest)
-    classical_model = RandomForestClassifier(n_estimators=50, random_state=42)
-    classical_model.fit(X_tr, y_tr)
-    
+    X_train_pca = np.load("X_train_pca.npy")
+    X_test_pca = np.load("X_test_pca.npy")
+
+    for model_name, model_type in [("LogReg", "linear"), ("SVM", "kernel"), ("XGBoost", "tree")]:
+        model = joblib.load(f"model_{model_name}.pkl")
+        calculate_and_save_shap(
+            model=model,
+            X_train=X_train_pca,
+            X_test=X_test_pca,
+            feature_names=feature_names,
+            model_name=model_name,
+            model_type=model_type
+        )
+
+    X_train_raw, X_test_raw, y_train, y_test = load_and_split_data()
+    X_train_angles, X_test_angles = preprocess_for_quantum(X_train_raw, X_test_raw)
+
+    saved = np.load("trained_vqc_4q.npz")
+    qml_model = QMLModelWrapper(saved["weights"], float(saved["bias"]), predict_probability)
     calculate_and_save_shap(
-        model=classical_model,
-        X_train=X_tr,
-        X_test=X_te,
-        feature_names=feature_labels,
-        model_name="Classical_Random_Forest",
-        model_type="tree"
-    )
-
-    # 3. Example B: Quantum ML / Kernel Model Proxy (e.g., Support Vector Classifier or Quantum Circuit)
-    quantum_model_proxy = SVC(probability=True, random_state=42)
-    quantum_model_proxy.fit(X_tr, y_tr)
-
-    calculate_and_save_shap(
-        model=quantum_model_proxy,
-        X_train=X_tr,
-        X_test=X_te,
-        feature_names=feature_labels,
-        model_name="Quantum_Model_Proxy",
-        model_type="kernel"  # Use 'kernel' for Quantum circuits/VQC models
+        model=qml_model,
+        X_train=X_train_angles,
+        X_test=X_test_angles,
+        feature_names=feature_names,
+        model_name="VQC_Quantum_4q_fixed",
+        model_type="kernel"
     )
