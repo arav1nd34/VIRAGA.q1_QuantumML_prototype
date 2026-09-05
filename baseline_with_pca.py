@@ -23,6 +23,7 @@ from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 )
 import pandas as pd
+import numpy as np
 import time
 
 N_COMPONENTS = 4  # match this to your quantum circuit's qubit count
@@ -48,6 +49,8 @@ X_test_s = scaler.transform(X_test)
 pca = PCA(n_components=N_COMPONENTS)
 X_train_p = pca.fit_transform(X_train_s)
 X_test_p = pca.transform(X_test_s)
+np.save("X_train_pca.npy", X_train_p)
+np.save("X_test_pca.npy", X_test_p)
 variance_retained = pca.explained_variance_ratio_.sum()
 print(f"Components: {N_COMPONENTS} | Variance retained: {variance_retained:.4f}")
 if variance_retained < 0.80:
